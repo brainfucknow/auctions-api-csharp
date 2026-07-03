@@ -33,6 +33,38 @@ verifier, not the runtime, is the authority.
 | `verification/Generated` | Dafny skeletons generated from `[Verify]`-annotated C# methods. Do not edit; regenerate. |
 | `tools/CSharpToDafny` | Roslyn tool that extracts `[Verify]` methods and their contracts to Dafny. |
 
+## Why a bespoke extraction tool? (prior art)
+
+There is no Microsoft (or other maintained) tool that translates C# to Dafny, with Roslyn or
+otherwise — which is why `tools/CSharpToDafny` exists. The surrounding landscape, and why we sit
+where we do in it:
+
+- **Dafny's supported C# integration runs in the opposite direction.** Dafny originated at
+  [Microsoft Research](https://www.microsoft.com/en-us/research/publication/dafny-program-verifier/)
+  and its toolchain compiles **Dafny → C#** (also Java, Go, Python, JavaScript), with `{:extern}` for
+  calling hand-written C#; see the
+  [Dafny ↔ C# integration guide](https://dafny.org/dafny/DafnyRef/integration-cs/IntegrationCS).
+  That is the "reverse ownership" end-state sketched under *next steps* below: for the most critical
+  components, the verified Dafny becomes the production implementation.
+- **The historical Microsoft tools for verifying C# predate or bypass Roslyn, and are dormant.**
+  *Spec#* (a C# superset verified via Boogie, custom compiler, ~2004) is long dead. *Code Contracts*
+  (`System.Diagnostics.Contracts` + the Clousot static checker) worked by IL rewriting and abstract
+  interpretation, was abandoned around 2015 and never got a Roslyn-era successor — our
+  `Contract.Requires` / `Contract.Ensures` vocabulary deliberately mirrors it, because the shape was
+  right even if the tooling died. *BCT* (Bytecode Translator, .NET IL → Boogie) is likewise dormant.
+- **Current work in the C# → Dafny direction is research, not product** — e.g. LLM-based synthesis of
+  verified Dafny such as
+  [Towards AI-Assisted Synthesis of Verified Dafny Methods](https://arxiv.org/pdf/2402.00247). That
+  maps to our Phase 6 role for LLMs: they may *propose* specifications and proofs, but only what
+  `dafny verify` accepts counts.
+
+The absence of a general tool is not an accident: full C# → Dafny transpilation is very hard (heap and
+reference semantics, LINQ, exceptions, inheritance and virtual dispatch would all need faithful
+modelling). Our tool deliberately dodges that by translating only what is tractable and valuable —
+**signatures and contracts of pure, static methods** — and leaving bodies to humans/LLMs with the
+verifier as the gate. That keeps the tool small enough to trust while still automating the
+boilerplate: type mapping, enum/flags encoding, and drift detection in CI.
+
 ## Running it locally
 
 ```bash
