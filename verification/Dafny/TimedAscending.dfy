@@ -6,8 +6,10 @@
 // Modelling notes:
 //  * Time is an integer (DateTimeOffset ticks).
 //  * The C# [Flags] Errors enum combined with `|` is modelled as a set of errors; Errors.None is `{}`.
-//  * Amounts are unbounded integers. The C# implementation uses `long`; `highestBid + minRaise` could in
-//    principle overflow there, which the integer model makes visible as an explicit modelling assumption.
+//  * Amounts are unbounded integers. The C# implementation uses `long`, where `highestBid + minRaise`
+//    could overflow; the C# contract therefore carries an explicit no-overflow precondition
+//    (Contract.Requires(highestBid <= long.MaxValue - minRaise)), scoping the verified claim to the
+//    region where `long` arithmetic agrees with this model.
 //  * Observation from modelling: the C# GetState uses the *initial* `Expiry` to decide whether the auction
 //    has ended, while `EndsAt` (which is extended by `TimeFrame` on every accepted bid) is only recorded.
 //    The model mirrors that behaviour faithfully; see EndsAtDoesNotAffectState below.

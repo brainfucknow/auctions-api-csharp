@@ -104,10 +104,17 @@ public class TimedAscendingAuction : Auction, IState
     ///     above the highest standing bid and raises it by at least <paramref name="minRaise" />.
     ///     Verified in <c>verification/Dafny/TimedAscending.dfy</c>.
     /// </summary>
+    /// <remarks>
+    ///     The no-overflow precondition scopes the verified contract to inputs where the C# `long` addition
+    ///     agrees with Dafny's unbounded integers; without it, `highestBid + minRaise` wrapping around
+    ///     <see cref="long.MaxValue" /> would let an absurdly high bid be rejected as too low — or worse,
+    ///     let the verifier certify a property the wrapped arithmetic does not satisfy.
+    /// </remarks>
     [Verify]
     internal static Errors ValidateRaise(long amount, long highestBid, long minRaise)
     {
         Contract.Requires(minRaise >= 0);
+        Contract.Requires(highestBid <= long.MaxValue - minRaise);
         Contract.Ensures<Errors>(result =>
             (result == Errors.None) == (amount > highestBid && amount >= highestBid + minRaise));
 

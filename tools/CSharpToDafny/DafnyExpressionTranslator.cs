@@ -73,14 +73,21 @@ internal sealed class DafnyExpressionTranslator(SemanticModel model, VerifiedMet
 
     private string TranslateMemberAccess(MemberAccessExpressionSyntax member)
     {
-        // Enum members such as Errors.None become prelude constants such as Errors_None.
-        if (model.GetSymbolInfo(member).Symbol is IFieldSymbol { ContainingType.TypeKind: TypeKind.Enum } field)
+        switch (model.GetSymbolInfo(member).Symbol)
         {
-            extractor.MapType(field.ContainingType);
-            return $"{field.ContainingType.Name}_{field.Name}";
-        }
+            // Enum members such as Errors.None become prelude constants such as Errors_None.
+            case IFieldSymbol { ContainingType.TypeKind: TypeKind.Enum } field:
+                extractor.MapType(field.ContainingType);
+                return $"{field.ContainingType.Name}_{field.Name}";
 
-        throw new TranslationException($"unsupported member access '{member}'");
+            // Numeric constants such as long.MaxValue become integer literals: Dafny ints are unbounded,
+            // so bounds used in overflow preconditions translate to their concrete values.
+            case IFieldSymbol { HasConstantValue: true, ConstantValue: long or int or short or sbyte or ulong or uint or ushort or byte } constant:
+                return Convert.ToString(constant.ConstantValue, System.Globalization.CultureInfo.InvariantCulture)!;
+
+            default:
+                throw new TranslationException($"unsupported member access '{member}'");
+        }
     }
 
     private static string TranslateLiteral(LiteralExpressionSyntax literal)

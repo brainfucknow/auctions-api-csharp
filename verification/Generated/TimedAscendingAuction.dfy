@@ -6,14 +6,16 @@ include "Types.dfy"
 module Generated_Wallymathieu_Auctions_DomainModels_TimedAscendingAuction {
   import opened GeneratedTypes
 
-  // Wallymathieu.Auctions.DomainModels.TimedAscendingAuction.ValidateRaise (src/Auctions.Domain/DomainModels/TimedAscendingAuction.cs:107)
+  // Wallymathieu.Auctions.DomainModels.TimedAscendingAuction.ValidateRaise (src/Auctions.Domain/DomainModels/TimedAscendingAuction.cs:113)
   method {:axiom} ValidateRaise(amount: int, highestBid: int, minRaise: int)
     returns (result: Errors)
     requires minRaise >= 0
+    requires highestBid <= 9223372036854775807 - minRaise
     ensures (result == Errors_None) == (amount > highestBid && amount >= highestBid + minRaise)
   /* Original C# body:
   {
           Contract.Requires(minRaise >= 0);
+          Contract.Requires(highestBid <= long.MaxValue - minRaise);
           Contract.Ensures<Errors>(result =>
               (result == Errors.None) == (amount > highestBid && amount >= highestBid + minRaise));
   

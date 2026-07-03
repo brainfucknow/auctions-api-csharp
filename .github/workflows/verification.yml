@@ -38,7 +38,17 @@ jobs:
         run: dotnet run --project tools/CSharpToDafny -- --source src/Auctions.Domain --output verification/Generated
 
       - name: Check generated skeletons are committed and up to date
-        run: git diff --exit-code -- verification/Generated
+        # git status --porcelain covers modified, deleted AND untracked files — a plain
+        # `git diff --exit-code` would miss a brand-new generated file that was never committed.
+        run: |
+          drift=$(git status --porcelain -- verification/Generated)
+          if [ -n "$drift" ]; then
+            echo "verification/Generated is out of date; regenerate it and commit the result:"
+            echo "  dotnet run --project tools/CSharpToDafny -- --source src/Auctions.Domain --output verification/Generated"
+            echo "$drift"
+            git diff -- verification/Generated
+            exit 1
+          fi
 
       - name: Verify Dafny models
         run: |

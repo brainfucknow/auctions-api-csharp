@@ -31,6 +31,7 @@ module GeneratedContracts {
   method ValidateRaise(amount: int, highestBid: int, minRaise: int)
     returns (result: Errors)
     requires minRaise >= 0
+    requires highestBid <= 9223372036854775807 - minRaise  // no long overflow: C# and the model agree
     ensures (result == Errors_None) == (amount > highestBid && amount >= highestBid + minRaise)
   {
     if amount <= highestBid { result := Errors_MustPlaceBidOverHighestBid; }

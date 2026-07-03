@@ -101,7 +101,9 @@ one at a time.
 Parameters and returns: `int`, `long`, `bool`, `string`, `System.DateTimeOffset` (as integer `Time`),
 enums (as `bv32` with named constants — `[Flags]` combination via `|`/`&` works), and domain
 records/classes as opaque types with equality (e.g. `UserId`). Contract expressions: comparisons,
-`&&`, `||`, `!`, `+`, `-`, `*`, `|`, `&`, literals, parameters and enum members. Anything else is
+`&&`, `||`, `!`, `+`, `-`, `*`, `|`, `&`, literals, parameters, enum members, and numeric constant
+fields such as `long.MaxValue` (emitted as their literal value — useful for no-overflow
+preconditions, since Dafny integers are unbounded while C# `long` arithmetic wraps). Anything else is
 emitted as a `// TODO(unsupported contract)` comment rather than silently mistranslated; instance
 methods and unsupported types are skipped with a warning.
 
