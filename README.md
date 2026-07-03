@@ -21,6 +21,13 @@ The API assumes that you have auth middleware in front of the app.
 
 Either the decoded JWT in the `x-jwt-payload` header or specify an encoded claims principal by using configuration value in `PrincipalHeader`, such as `x-ms-client-principal`.
 
+## Formal verification
+
+The business-critical auction rules (bid validation, the English-auction raise policy, sealed-bid winner
+selection) are modelled and machine-checked in [Dafny](https://dafny.org) as a verification sidecar: the
+production code stays in C#, methods opt in with `[Verify]`, and a Roslyn tool extracts their contracts
+to Dafny skeletons. See [verification/README.md](verification/README.md).
+
 ## Add migration
 
 ```bash

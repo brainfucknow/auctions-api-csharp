@@ -1,3 +1,5 @@
+using Wallymathieu.Auctions.Verification;
+
 namespace Wallymathieu.Auctions.DomainModels;
 
 /// <summary>
@@ -30,16 +32,11 @@ public class TimedAscendingAuction : Auction, IState
 
                 if (Bids.Count != 0)
                 {
-                    var maxBid = Bids.Max(b => b.Amount)!;
-                    if (bid.Amount <= maxBid)
+                    var maxBid = Bids.Max(b => b.Amount);
+                    var raiseErrors = ValidateRaise(bid.Amount, maxBid, Options.MinRaise);
+                    if (raiseErrors != Errors.None)
                     {
-                        errors |= Errors.MustPlaceBidOverHighestBid;
-                        return false;
-                    }
-
-                    if (bid.Amount < maxBid + Options.MinRaise)
-                    {
-                        errors |= Errors.MustRaiseWithAtLeast;
+                        errors |= raiseErrors;
                         return false;
                     }
                 }
@@ -100,6 +97,23 @@ public class TimedAscendingAuction : Auction, IState
             State.HasEnded => true,
             _ => false
         };
+    }
+
+    /// <summary>
+    ///     Pure core of the English-auction raise policy: a new bid is accepted exactly when it is strictly
+    ///     above the highest standing bid and raises it by at least <paramref name="minRaise" />.
+    ///     Verified in <c>verification/Dafny/TimedAscending.dfy</c>.
+    /// </summary>
+    [Verify]
+    internal static Errors ValidateRaise(long amount, long highestBid, long minRaise)
+    {
+        Contract.Requires(minRaise >= 0);
+        Contract.Ensures<Errors>(result =>
+            (result == Errors.None) == (amount > highestBid && amount >= highestBid + minRaise));
+
+        if (amount <= highestBid) return Errors.MustPlaceBidOverHighestBid;
+        if (amount < highestBid + minRaise) return Errors.MustRaiseWithAtLeast;
+        return Errors.None;
     }
 
     private State GetState(DateTimeOffset time)
