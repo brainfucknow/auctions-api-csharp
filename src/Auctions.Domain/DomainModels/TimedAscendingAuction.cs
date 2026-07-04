@@ -102,25 +102,20 @@ public class TimedAscendingAuction : Auction, IState
     /// <summary>
     ///     Pure core of the English-auction raise policy: a new bid is accepted exactly when it is strictly
     ///     above the highest standing bid and raises it by at least <paramref name="minRaise" />.
-    ///     Verified in <c>verification/Dafny/TimedAscending.dfy</c>.
+    ///     <br />
+    ///     The implementation is compiled from formally verified Dafny — the source of truth is
+    ///     <c>src/Auctions.Domain.Verified/Validation.dfy</c>, not C#. The auction state machine is
+    ///     additionally verified in <c>verification/Dafny/TimedAscending.dfy</c>.
     /// </summary>
     /// <remarks>
-    ///     The no-overflow precondition scopes the verified contract to inputs where the C# `long` addition
-    ///     agrees with Dafny's unbounded integers; without it, `highestBid + minRaise` wrapping around
-    ///     <see cref="long.MaxValue" /> would let an absurdly high bid be rejected as too low — or worse,
-    ///     let the verifier certify a property the wrapped arithmetic does not satisfy.
+    ///     The verified implementation is total and overflow-free: a non-positive <paramref name="minRaise" />
+    ///     means "no minimum raise", and when <paramref name="highestBid" /> + <paramref name="minRaise" />
+    ///     exceeds <see cref="long.MaxValue" /> no representable bid can satisfy the raise, so the bid is
+    ///     rejected (the earlier hand-written C# wrapped around instead and accepted).
     /// </remarks>
-    [Verify]
     internal static Errors ValidateRaise(long amount, long highestBid, long minRaise)
     {
-        Contract.Requires(minRaise >= 0);
-        Contract.Requires(highestBid <= long.MaxValue - minRaise);
-        Contract.Ensures<Errors>(result =>
-            (result == Errors.None) == (amount > highestBid && amount >= highestBid + minRaise));
-
-        if (amount <= highestBid) return Errors.MustPlaceBidOverHighestBid;
-        if (amount < highestBid + minRaise) return Errors.MustRaiseWithAtLeast;
-        return Errors.None;
+        return VerifiedCore.ValidateRaise(amount, highestBid, minRaise);
     }
 
     private State GetState(DateTimeOffset time)

@@ -6,10 +6,10 @@
 // Modelling notes:
 //  * Time is an integer (DateTimeOffset ticks).
 //  * The C# [Flags] Errors enum combined with `|` is modelled as a set of errors; Errors.None is `{}`.
-//  * Amounts are unbounded integers. The C# implementation uses `long`, where `highestBid + minRaise`
-//    could overflow; the C# contract therefore carries an explicit no-overflow precondition
-//    (Contract.Requires(highestBid <= long.MaxValue - minRaise)), scoping the verified claim to the
-//    region where `long` arithmetic agrees with this model.
+//  * Amounts are unbounded integers. The production raise policy is itself compiled from verified Dafny
+//    (src/Auctions.Domain.Verified/Validation.dfy) over 64-bit newtypes; it additionally rejects raises
+//    whose bound exceeds the Int64 range — a case that cannot arise in this unbounded model. Elsewhere
+//    the two agree, including treating a negative minRaise as "no minimum raise".
 //  * Observation from modelling: the C# GetState uses the *initial* `Expiry` to decide whether the auction
 //    has ended, while `EndsAt` (which is extended by `TimeFrame` on every accepted bid) is only recorded.
 //    The model mirrors that behaviour faithfully; see EndsAtDoesNotAffectState below.
@@ -58,7 +58,7 @@ module TimedAscending {
     (if at > expiry then {AuctionHasEnded} else {})
   }
 
-  // Mirrors [Verify] TimedAscendingAuction.ValidateRaise.
+  // Mirrors AuctionValidation.ValidateRaise (src/Auctions.Domain.Verified/Validation.dfy).
   function ValidateRaise(amount: int, highestBid: int, minRaise: int): set<Error>
   {
     if amount <= highestBid then {MustPlaceBidOverHighestBid}
@@ -66,7 +66,7 @@ module TimedAscending {
     else {}
   }
 
-  // The contract stated on the C# method ([Verify] TimedAscendingAuction.ValidateRaise).
+  // The characterisation the production source proves over Int64 (here over unbounded integers).
   lemma ValidateRaiseCharacterisation(amount: int, highestBid: int, minRaise: int)
     ensures ValidateRaise(amount, highestBid, minRaise) == {}
         <==> amount > highestBid && amount >= highestBid + minRaise

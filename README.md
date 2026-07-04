@@ -23,10 +23,12 @@ Either the decoded JWT in the `x-jwt-payload` header or specify an encoded claim
 
 ## Formal verification
 
-The business-critical auction rules (bid validation, the English-auction raise policy, sealed-bid winner
-selection) are modelled and machine-checked in [Dafny](https://dafny.org) as a verification sidecar: the
-production code stays in C#, methods opt in with `[Verify]`, and a Roslyn tool extracts their contracts
-to Dafny skeletons. See [verification/README.md](verification/README.md).
+The business-critical auction rules are machine-checked with [Dafny](https://dafny.org). Bid validation
+and the English-auction raise policy are **Dafny-first**: their production implementation is compiled
+from verified Dafny source in [src/Auctions.Domain.Verified](src/Auctions.Domain.Verified) (overflow
+freedom included in the proofs). The auction state machines (strictly ascending bids, sealed-bid winner
+selection) are additionally proved as models, and new candidates opt in with `[Verify]` for a Roslyn
+tool to extract contracts to Dafny skeletons. See [verification/README.md](verification/README.md).
 
 ## Add migration
 

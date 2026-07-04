@@ -1,5 +1,6 @@
-// Formal model of bid validation, mirroring
-//   src/Auctions.Domain/DomainModels/Bid.cs :: Bid.Validate
+// Formal model of bid validation, mirroring Bid.Validate — whose production implementation is itself
+// compiled from verified Dafny: src/Auctions.Domain.Verified/Validation.dfy. This model restates the
+// rules with errors as sets (rather than the interop-oriented bv32) and proves additional properties.
 //
 // Time is modelled as an integer (DateTimeOffset ticks): the C# comparison operators on
 // DateTimeOffset are a total order, which integers model faithfully for this purpose.
@@ -25,7 +26,7 @@ module BidValidation {
     (if at > expiry then {AuctionHasEnded} else {})
   }
 
-  // The contract stated on the C# method ([Verify] Bid.Validate):
+  // The headline contract (also proved on the production source in Validation.dfy):
   // a bid is valid exactly when the bidder is not the seller and the bid falls inside the window.
   lemma ValidateBidCharacterisation(bidder: UserId, seller: UserId, at: Time, startsAt: Time, expiry: Time)
     ensures ValidateBid(bidder, seller, at, startsAt, expiry) == {}
