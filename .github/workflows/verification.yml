@@ -1,7 +1,6 @@
 # Formal verification: verifies the Dafny-first production core (src/Auctions.Domain.Verified) and the
-# Dafny models of the auction domain, and checks that both the compiled verified core and the skeletons
-# generated from [Verify]-annotated C# methods are committed and up to date.
-# See verification/README.md.
+# Dafny models of the auction domain, and checks that the compiled verified core is committed and up to
+# date. See verification/README.md.
 
 name: Formal verification
 
@@ -50,26 +49,10 @@ jobs:
             exit 1
           fi
 
-      - name: Regenerate Dafny skeletons from [Verify] methods
-        run: dotnet run --project tools/CSharpToDafny -- --source src/Auctions.Domain --output verification/Generated
-
-      - name: Check generated skeletons are committed and up to date
-        # git status --porcelain covers modified, deleted AND untracked files — a plain
-        # `git diff --exit-code` would miss a brand-new generated file that was never committed.
-        run: |
-          drift=$(git status --porcelain -- verification/Generated)
-          if [ -n "$drift" ]; then
-            echo "verification/Generated is out of date; regenerate it and commit the result:"
-            echo "  dotnet run --project tools/CSharpToDafny -- --source src/Auctions.Domain --output verification/Generated"
-            echo "$drift"
-            git diff -- verification/Generated
-            exit 1
-          fi
-
       - name: Verify Dafny models
         run: |
           status=0
-          for f in verification/Dafny/*.dfy verification/Generated/*.dfy; do
+          for f in verification/Dafny/*.dfy; do
             echo "::group::dafny verify $f"
             dotnet tool run dafny -- verify "$f" || status=1
             echo "::endgroup::"

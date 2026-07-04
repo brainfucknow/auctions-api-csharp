@@ -1,33 +1,31 @@
 # Formal verification
 
-Formal verification is introduced into the auctions codebase **incrementally** using
-[Dafny](https://dafny.org) (verified by Boogie + Z3). Two complementary mechanisms exist, and methods
-graduate from the first to the second:
-
-1. **The sidecar (on-ramp).** C# methods opt in with `[Verify]` + contracts; the Roslyn tool extracts
-   Dafny skeletons; humans/LLMs complete specifications; handwritten models in `verification/Dafny`
-   prove domain invariants. The C# stays the production implementation.
-2. **Dafny-first (reverse ownership).** Once a candidate's specification is stable, the method
-   *graduates*: its implementation moves to Dafny source in `src/Auctions.Domain.Verified`, is proved by
-   the verifier (including absence of arithmetic overflow, via 64-bit newtypes), compiled to C# with
-   `dafny translate cs`, and called by the domain through a thin interop shim. Dafny — not C# — becomes
-   the source of truth. `Bid.Validate` and `TimedAscendingAuction.ValidateRaise` have graduated.
+The business-critical auction rules are formally verified with [Dafny](https://dafny.org) (verified by
+Boogie + Z3), **Dafny-first**: the verified Dafny in `src/Auctions.Domain.Verified` is the production
+source of truth, compiled to C# and called by the domain through a thin interop shim. Alongside it,
+handwritten models in `verification/Dafny` prove the invariants of the auction state machines. The
+verifier — not tests, not review — is the authority on the verified properties.
 
 ```text
-   ┌── the sidecar (on-ramp) ────────────────┐   ┌── Dafny-first (graduated) ──────────────┐
-   │  C# method + [Verify] + Contract        │   │  src/Auctions.Domain.Verified/*.dfy     │
-   │            │                            │   │  (production source, machine-checked)   │
-   │            ▼                            │   │            │                            │
-   │  tools/CSharpToDafny (Roslyn)           │   │  dafny translate cs   (generate.sh)     │
-   │            │                            │   │            │                            │
-   │            ▼                            │   │            ▼                            │
-   │  verification/Generated (skeletons)     │   │  Generated/Validation.cs (committed)    │
-   │            │                            │   │            │                            │
-   │            ▼                            │   │            ▼                            │
-   │  verification/Dafny (models + proofs)   │   │  Auctions.Domain calls it via a shim    │
-   └──────────────────┬──────────────────────┘   └──────────────────┬─────────────────────┘
-                      └───────────► dafny verify + drift checks (CI: verification.yml)
+   src/Auctions.Domain.Verified/Validation.dfy        verification/Dafny/*.dfy
+   (production source, machine-checked,               (models of the auction state
+    overflow-free by proof)                            machines, invariant proofs)
+                 │                                                │
+   dafny translate cs   (generate.sh)                       dafny verify
+                 │                                                │
+                 ▼                                                │
+   Generated/Validation.cs (committed;                            │
+   CI recompiles and fails on drift)                              │
+                 │                                                │
+                 ▼                                                ▼
+   Auctions.Domain calls it via VerifiedCore        CI: verification.yml gates both
 ```
+
+The codebase got here incrementally. A Roslyn *sidecar* came first: C# methods opted in with a
+`[Verify]` attribute and `Contract.Requires`/`Ensures` clauses, and a bespoke extraction tool
+(`tools/CSharpToDafny`) generated Dafny skeletons whose specifications were then completed and proved.
+Once both extracted methods graduated to Dafny-first ownership, the sidecar had no remaining consumers
+and was removed — it lives in the git history should new C# candidates warrant reviving it.
 
 ## Layout
 
@@ -35,40 +33,28 @@ graduate from the first to the second:
 |------|----------|
 | `src/Auctions.Domain.Verified` | **Dafny-first production code**: `Validation.dfy` (source of truth) and the committed C# compiled from it. |
 | `verification/Dafny` | Handwritten, fully verified models of the auction domain. |
-| `verification/Generated` | Dafny skeletons generated from `[Verify]`-annotated C# methods. Do not edit; regenerate. (Currently empty: both extracted methods have graduated to Dafny-first.) |
-| `tools/CSharpToDafny` | Roslyn tool that extracts `[Verify]` methods and their contracts to Dafny. |
 
-## Why a bespoke extraction tool? (prior art)
+## Why Dafny-first? (prior art)
 
-There is no Microsoft (or other maintained) tool that translates C# to Dafny, with Roslyn or
-otherwise — which is why `tools/CSharpToDafny` exists. The surrounding landscape, and why we sit
-where we do in it:
+There is no Microsoft (or other maintained) tool that translates C# to Dafny, with Roslyn or otherwise
+— which is why the interim extraction tool was bespoke, and why the durable architecture goes the other
+way:
 
-- **Dafny's supported C# integration runs in the opposite direction.** Dafny originated at
+- **Dafny's supported C# integration compiles Dafny → C#.** Dafny originated at
   [Microsoft Research](https://www.microsoft.com/en-us/research/publication/dafny-program-verifier/)
-  and its toolchain compiles **Dafny → C#** (also Java, Go, Python, JavaScript), with `{:extern}` for
-  calling hand-written C#; see the
+  and its toolchain targets C# (also Java, Go, Python, JavaScript), with `{:extern}` for calling
+  hand-written code; see the
   [Dafny ↔ C# integration guide](https://dafny.org/dafny/DafnyRef/integration-cs/IntegrationCS).
-  That is the "reverse ownership" end-state sketched under *next steps* below: for the most critical
-  components, the verified Dafny becomes the production implementation.
-- **The historical Microsoft tools for verifying C# predate or bypass Roslyn, and are dormant.**
-  *Spec#* (a C# superset verified via Boogie, custom compiler, ~2004) is long dead. *Code Contracts*
-  (`System.Diagnostics.Contracts` + the Clousot static checker) worked by IL rewriting and abstract
-  interpretation, was abandoned around 2015 and never got a Roslyn-era successor — our
-  `Contract.Requires` / `Contract.Ensures` vocabulary deliberately mirrors it, because the shape was
-  right even if the tooling died. *BCT* (Bytecode Translator, .NET IL → Boogie) is likewise dormant.
-- **Current work in the C# → Dafny direction is research, not product** — e.g. LLM-based synthesis of
-  verified Dafny such as
-  [Towards AI-Assisted Synthesis of Verified Dafny Methods](https://arxiv.org/pdf/2402.00247). That
-  maps to our Phase 6 role for LLMs: they may *propose* specifications and proofs, but only what
-  `dafny verify` accepts counts.
-
-The absence of a general tool is not an accident: full C# → Dafny transpilation is very hard (heap and
-reference semantics, LINQ, exceptions, inheritance and virtual dispatch would all need faithful
-modelling). Our tool deliberately dodges that by translating only what is tractable and valuable —
-**signatures and contracts of pure, static methods** — and leaving bodies to humans/LLMs with the
-verifier as the gate. That keeps the tool small enough to trust while still automating the
-boilerplate: type mapping, enum/flags encoding, and drift detection in CI.
+  Dafny-first "reverse ownership" is therefore the supported, durable direction — the verified
+  implementation *is* the production implementation, so nothing can drift.
+- **The historical Microsoft tools for verifying C# are dormant.** *Spec#* (a C# superset verified via
+  Boogie, ~2004) is long dead; *Code Contracts* (`System.Diagnostics.Contracts` + the Clousot static
+  checker) was abandoned around 2015 with no Roslyn-era successor; *BCT* (Bytecode Translator, .NET IL
+  → Boogie) is likewise dormant. Verifying C# in place is a research graveyard; compiling verified
+  Dafny into the application is not.
+- **C# → Dafny remains research, not product** — e.g. LLM-based synthesis of verified Dafny such as
+  [Towards AI-Assisted Synthesis of Verified Dafny Methods](https://arxiv.org/pdf/2402.00247). LLMs
+  may *propose* specifications and proofs here too, but only what `dafny verify` accepts counts.
 
 ## Running it locally
 
@@ -80,16 +66,12 @@ dotnet tool restore                 # installs the pinned Dafny CLI (see .config
 # Verify + recompile the Dafny-first core after editing Validation.dfy:
 ./src/Auctions.Domain.Verified/generate.sh
 
-# Regenerate skeletons from [Verify] methods (run from the repository root):
-dotnet run --project tools/CSharpToDafny -- --source src/Auctions.Domain --output verification/Generated
-
 # Verify the models:
-for f in verification/Dafny/*.dfy verification/Generated/*.dfy; do dotnet tool run dafny -- verify "$f"; done
+for f in verification/Dafny/*.dfy; do dotnet tool run dafny -- verify "$f"; done
 ```
 
 Each `.dfy` file is self-contained (or pulls in its dependencies via `include`), so files are verified
-one at a time. CI fails if either generated artifact (the compiled verified core, or the skeletons)
-drifts from what is committed.
+one at a time. CI fails if the compiled verified core drifts from what is committed.
 
 ## The Dafny-first core
 
@@ -111,33 +93,19 @@ constants in `Validation.dfy` mirror the enum's member values, and the only hand
 `Validation.dfy`, run `generate.sh` (translation verifies first — an unprovable spec aborts
 generation), commit both files.
 
-## Opting a method in (the sidecar on-ramp)
+## Adding a verified function
 
-1. Keep (or refactor) the logic as a **pure, static** method over simple types — see
-   `Bid.Validate(UserId, UserId, DateTimeOffset, DateTimeOffset, DateTimeOffset)` and
-   `TimedAscendingAuction.ValidateRaise(long, long, long)` for the pattern.
-2. Mark it `[Verify]` (`Wallymathieu.Auctions.Verification.VerifyAttribute`) and state its contract with
-   `Contract.Requires(...)` / `Contract.Ensures(result => ...)`. The contract calls compile away unless
-   `CONTRACTS_FULL` is defined; they exist for the extraction pipeline.
-3. Run the extraction tool (above) and commit the regenerated files — CI fails on drift.
-4. Complete the specification: give the generated contract a verified implementation and, for state
-   machines and algorithms, a proper model with invariant proofs (see `Dafny/TimedAscending.dfy`). An
-   LLM may *propose* specifications and proofs, but only what `dafny verify` accepts counts.
-5. When the specification is stable, **graduate the method**: move the implementation into
-   `src/Auctions.Domain.Verified/Validation.dfy` (or a sibling module), run `generate.sh`, delegate the
-   C# method body to the compiled code via `VerifiedCore`, and drop the `[Verify]`/`Contract` markers —
-   the Dafny source now carries the contract.
-
-### What translates today
-
-Parameters and returns: `int`, `long`, `bool`, `string`, `System.DateTimeOffset` (as integer `Time`),
-enums (as `bv32` with named constants — `[Flags]` combination via `|`/`&` works), and domain
-records/classes as opaque types with equality (e.g. `UserId`). Contract expressions: comparisons,
-`&&`, `||`, `!`, `+`, `-`, `*`, `|`, `&`, literals, parameters, enum members, and numeric constant
-fields such as `long.MaxValue` (emitted as their literal value — useful for no-overflow
-preconditions, since Dafny integers are unbounded while C# `long` arithmetic wraps). Anything else is
-emitted as a `// TODO(unsupported contract)` comment rather than silently mistranslated; instance
-methods and unsupported types are skipped with a warning.
+1. Keep (or refactor) the logic as a **pure function over simple types** behind a small C# seam — see
+   `Bid.Validate` and `TimedAscendingAuction.ValidateRaise` for the pattern.
+2. Write the implementation and its specification in `src/Auctions.Domain.Verified/Validation.dfy` (or
+   a sibling module). Prefer total functions and bounded newtypes so overflow is proved, and state the
+   specification over mathematical integers. An LLM may *propose* the specification and proof, but only
+   what the verifier accepts counts.
+3. Run `generate.sh`, delegate the C# seam to the compiled code via `VerifiedCore`, and commit both the
+   `.dfy` and the regenerated C# — CI fails on drift.
+4. For state machines and algorithms, also add a model with invariant proofs under `verification/Dafny`
+   (see `TimedAscending.dfy`): models capture properties of whole interaction sequences that a single
+   function contract cannot.
 
 ## What is proved today
 
@@ -178,12 +146,10 @@ should be updated to match.
 
 ## Known limitations / next steps
 
-- For the graduated functions the verified artifact **is** the production code — no sync-by-convention
+- For the Dafny-first functions the verified artifact **is** the production code — no sync-by-convention
   gap remains. The state-machine proofs in `verification/Dafny`, however, are still models of the
   EF-mapped entity classes (`TimedAscendingAuction`, `SingleSealedBidAuction`); their invariants hold of
   the model, and the entities mirror it by convention.
-- The extraction tool translates contracts, not method bodies — bodies are quoted as comments for the
-  human/LLM completing the specification.
-- Candidate next targets for the on-ramp: `Amount` arithmetic (same-currency preconditions) and the
-  auction state computation; the natural next graduation is a verified functional core for the auction
-  state machines that the entity classes delegate to, extending Dafny-first beyond leaf functions.
+- Candidate next targets: `Amount` arithmetic (same-currency preconditions) and the auction state
+  computation; the natural next step is a verified functional core for the auction state machines that
+  the entity classes delegate to, extending Dafny-first beyond leaf functions.

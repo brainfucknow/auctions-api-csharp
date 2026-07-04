@@ -27,8 +27,7 @@ The business-critical auction rules are machine-checked with [Dafny](https://daf
 and the English-auction raise policy are **Dafny-first**: their production implementation is compiled
 from verified Dafny source in [src/Auctions.Domain.Verified](src/Auctions.Domain.Verified) (overflow
 freedom included in the proofs). The auction state machines (strictly ascending bids, sealed-bid winner
-selection) are additionally proved as models, and new candidates opt in with `[Verify]` for a Roslyn
-tool to extract contracts to Dafny skeletons. See [verification/README.md](verification/README.md).
+selection) are additionally proved as models. See [verification/README.md](verification/README.md).
 
 ## Add migration
 
