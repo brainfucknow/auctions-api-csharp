@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Wallymathieu.Auctions.Verification;
 
 namespace Wallymathieu.Auctions.DomainModels;
 
@@ -7,11 +8,21 @@ public record Bid(UserId User, long Amount, DateTimeOffset At)
     public Errors Validate(Auction auction)
     {
         ArgumentNullException.ThrowIfNull(auction);
-        var errors = Errors.None;
-        if (User == auction.User) errors |= Errors.SellerCannotPlaceBids;
-        if (At < auction.StartsAt) errors |= Errors.AuctionHasNotStarted;
-        if (At > auction.Expiry) errors |= Errors.AuctionHasEnded;
-        return errors;
+        return Validate(User, auction.User, At, auction.StartsAt, auction.Expiry);
+    }
+
+    /// <summary>
+    ///     Pure core of bid validation: a bid is valid exactly when the bidder is not the seller and the bid
+    ///     was placed within the auction window.
+    ///     <br />
+    ///     The implementation is compiled from formally verified Dafny — the source of truth is
+    ///     <c>src/Auctions.Domain.Verified/Validation.dfy</c>, not C#. The domain model is additionally
+    ///     verified in <c>verification/Dafny/BidValidation.dfy</c>.
+    /// </summary>
+    public static Errors Validate(UserId bidder, UserId seller, DateTimeOffset at, DateTimeOffset startsAt,
+        DateTimeOffset expiry)
+    {
+        return VerifiedCore.ValidateBid(bidder, seller, at, startsAt, expiry);
     }
 }
 /// <summary>

@@ -21,6 +21,14 @@ The API assumes that you have auth middleware in front of the app.
 
 Either the decoded JWT in the `x-jwt-payload` header or specify an encoded claims principal by using configuration value in `PrincipalHeader`, such as `x-ms-client-principal`.
 
+## Formal verification
+
+The business-critical auction rules are machine-checked with [Dafny](https://dafny.org). Bid validation
+and the English-auction raise policy are **Dafny-first**: their production implementation is compiled
+from verified Dafny source in [src/Auctions.Domain.Verified](src/Auctions.Domain.Verified) (overflow
+freedom included in the proofs). The auction state machines (strictly ascending bids, sealed-bid winner
+selection) are additionally proved as models. See [verification/README.md](verification/README.md).
+
 ## Add migration
 
 ```bash

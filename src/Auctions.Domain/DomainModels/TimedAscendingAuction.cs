@@ -1,3 +1,5 @@
+using Wallymathieu.Auctions.Verification;
+
 namespace Wallymathieu.Auctions.DomainModels;
 
 /// <summary>
@@ -30,16 +32,11 @@ public class TimedAscendingAuction : Auction, IState
 
                 if (Bids.Count != 0)
                 {
-                    var maxBid = Bids.Max(b => b.Amount)!;
-                    if (bid.Amount <= maxBid)
+                    var maxBid = Bids.Max(b => b.Amount);
+                    var raiseErrors = ValidateRaise(bid.Amount, maxBid, Options.MinRaise);
+                    if (raiseErrors != Errors.None)
                     {
-                        errors |= Errors.MustPlaceBidOverHighestBid;
-                        return false;
-                    }
-
-                    if (bid.Amount < maxBid + Options.MinRaise)
-                    {
-                        errors |= Errors.MustRaiseWithAtLeast;
+                        errors |= raiseErrors;
                         return false;
                     }
                 }
@@ -100,6 +97,25 @@ public class TimedAscendingAuction : Auction, IState
             State.HasEnded => true,
             _ => false
         };
+    }
+
+    /// <summary>
+    ///     Pure core of the English-auction raise policy: a new bid is accepted exactly when it is strictly
+    ///     above the highest standing bid and raises it by at least <paramref name="minRaise" />.
+    ///     <br />
+    ///     The implementation is compiled from formally verified Dafny — the source of truth is
+    ///     <c>src/Auctions.Domain.Verified/Validation.dfy</c>, not C#. The auction state machine is
+    ///     additionally verified in <c>verification/Dafny/TimedAscending.dfy</c>.
+    /// </summary>
+    /// <remarks>
+    ///     The verified implementation is total and overflow-free: a non-positive <paramref name="minRaise" />
+    ///     means "no minimum raise", and when <paramref name="highestBid" /> + <paramref name="minRaise" />
+    ///     exceeds <see cref="long.MaxValue" /> no representable bid can satisfy the raise, so the bid is
+    ///     rejected (the earlier hand-written C# wrapped around instead and accepted).
+    /// </remarks>
+    internal static Errors ValidateRaise(long amount, long highestBid, long minRaise)
+    {
+        return VerifiedCore.ValidateRaise(amount, highestBid, minRaise);
     }
 
     private State GetState(DateTimeOffset time)

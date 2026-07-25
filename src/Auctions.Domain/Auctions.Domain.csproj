@@ -12,4 +12,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Auctions.Infrastructure"/>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Auctions.Domain.Verified\Auctions.Domain.Verified.csproj" />
+  </ItemGroup>
 </Project>
