@@ -100,9 +100,9 @@ else
 
     private async Task AddBid()
     {
-        if (_newBid != null)
+        if (_newBid != null && _auction.Data is { } auction)
         {
-            var result = await CreateBidCommandHandler.Handle(new CreateBidCommand(_newBid.Value, _auction.Data.AuctionId));
+            var result = await CreateBidCommandHandler.Handle(new CreateBidCommand(_newBid.Value, auction.AuctionId));
             result?.Match(_ => { _newBid = null; }, err => { _errorDescription = err.ToString(); });
             if (result?.IsOk ?? false)
             {

@@ -30,32 +30,28 @@ public class SingleSealedBidAuction : Auction, IState
         switch (state)
         {
             case State.AcceptingBids:
-            {
-                errors = bid.Validate(this);
-                if (Bids.Any(b => b.User == bid.User))
-                {
-                    errors |= Errors.AlreadyPlacedBid;
-                    return false;
-                }
-
-                if (errors != Errors.None) return false;
-
-                Bids.Add(new BidEntity(0, bid));
-                return true;
-            }
+                return TryAcceptBid(bid, out errors);
             case State.DisclosingBids:
-            {
                 errors = Errors.AuctionHasEnded;
                 return false;
-            }
             case State.AwaitingStart:
-            {
                 errors = Errors.AuctionHasNotStarted;
                 return false;
-            }
             default:
                 throw new InvalidDataException(state.ToString());
         }
+    }
+
+    private bool TryAcceptBid(Bid bid, out Errors errors)
+    {
+        errors = bid.Validate(this);
+        if (Bids.Any(existingBid => existingBid.User == bid.User))
+            errors |= Errors.AlreadyPlacedBid;
+
+        if (errors != Errors.None) return false;
+
+        Bids.Add(new BidEntity(0, bid));
+        return true;
     }
 
 
@@ -70,35 +66,34 @@ public class SingleSealedBidAuction : Auction, IState
 
     public override (long Amount, UserId Winner)? TryGetAmountAndWinner(DateTimeOffset time)
     {
-        switch (GetState(time))
+        return GetState(time) switch
         {
-            case State.DisclosingBids:
-            {
-                switch (Options)
-                {
-                    case SingleSealedBidOptions.Blind when Bids.Count != 0:
-                    {
-                        var winningBid = Bids.MaxBy(b => b.Amount);
-                        return (winningBid!.Amount, winningBid.User);
-                    }
-                    case SingleSealedBidOptions.Vickrey when Bids.Count >= 2:
-                    {
-                        var bids = Bids.OrderByDescending(b => b.Amount).Take(2).ToArray();
-                        return (bids[1].Amount, bids[0].User);
-                    }
-                    case SingleSealedBidOptions.Vickrey when Bids.Count == 1:
-                    {
-                        var bid = Bids.Single();
-                        return (bid.Amount, bid.User);
-                    }
-                }
+            State.DisclosingBids => TryGetDisclosedWinner(),
+            _ => null
+        };
+    }
 
-                return null;
-            }
-            case State.AwaitingStart:
-            case State.AcceptingBids:
-            default: return null;
-        }
+    private (long Amount, UserId Winner)? TryGetDisclosedWinner() => Options switch
+    {
+        SingleSealedBidOptions.Blind => TryGetBlindWinner(),
+        SingleSealedBidOptions.Vickrey => TryGetVickreyWinner(),
+        _ => null
+    };
+
+    private (long Amount, UserId Winner)? TryGetBlindWinner()
+    {
+        var winningBid = Bids.MaxBy(bid => bid.Amount);
+        return winningBid is null ? null : (winningBid.Amount, winningBid.User);
+    }
+
+    private (long Amount, UserId Winner)? TryGetVickreyWinner()
+    {
+        if (Bids.Count == 0) return null;
+
+        var bids = Bids.OrderByDescending(bid => bid.Amount).Take(2).ToArray();
+        return bids.Length == 1
+            ? (bids[0].Amount, bids[0].User)
+            : (bids[1].Amount, bids[0].User);
     }
 
     public override bool HasEnded(DateTimeOffset time)

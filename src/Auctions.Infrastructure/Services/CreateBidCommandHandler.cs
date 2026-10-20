@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Wallymathieu.Auctions.Infrastructure.Data;
 using Wallymathieu.Auctions.Services;
 
@@ -20,6 +21,7 @@ internal sealed class CreateBidCommandHandler(
         var result = auction.TryAddBid(model, userContext, systemClock);
         if (result.IsOk)
         {
+            auctionDbContext.Entry(auction).State = EntityState.Modified;
             await auctionDbContext.SaveChangesAsync(cancellationToken);
         }
 

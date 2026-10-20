@@ -1,4 +1,4 @@
-﻿using Auctions.MigrationService;
+using Auctions.MigrationService;
 using Microsoft.EntityFrameworkCore;
 using Wallymathieu.Auctions.Frontend.Data;
 using Wallymathieu.Auctions.Infrastructure.Data;

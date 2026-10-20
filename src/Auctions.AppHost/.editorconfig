@@ -1,0 +1,5 @@
+root = false
+
+[AppHost.cs]
+# Top-level statements generate Program; AppHost.cs is the Aspire template convention.
+dotnet_diagnostic.MA0048.severity = none

@@ -5,10 +5,10 @@ namespace Wallymathieu.Auctions.Tests;
 public static class TestData
 {
     public static readonly AuctionId AuctionId = new(1L);
-    public static readonly string Title = "auction";
-    public static readonly DateTimeOffset InitialNow = new DateTime(2015, 12, 4, 0, 0, 0, DateTimeKind.Utc);
-    public static readonly DateTimeOffset StartsAt = new DateTime(2016, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-    public static readonly DateTimeOffset EndsAt = new DateTime(2016, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+    public const string Title = "auction";
+    public static readonly DateTimeOffset InitialNow = new(2015, 12, 4, 0, 0, 0, TimeSpan.Zero);
+    public static readonly DateTimeOffset StartsAt = new(2016, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    public static readonly DateTimeOffset EndsAt = new(2016, 2, 1, 0, 0, 0, TimeSpan.Zero);
     public static readonly UserId Seller = new("x1");
     public static readonly UserId Buyer = new("x2");
 
@@ -49,7 +49,7 @@ public static class TestData
         new(
             User: Buyer,
             Amount: 100L,
-            At: new DateTime(2016, 1, 2, 0, 0, 0, DateTimeKind.Utc));
+            At: new DateTimeOffset(2016, 1, 2, 0, 0, 0, TimeSpan.Zero));
 
     public static Bid BidOf200 => BidOf100 with { Amount = 200L };
     public static readonly UserId Buyer1 = new("x2");

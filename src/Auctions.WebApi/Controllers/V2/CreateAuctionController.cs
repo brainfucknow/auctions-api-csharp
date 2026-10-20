@@ -27,6 +27,8 @@ public class CreateAuctionController(
     public async Task<ActionResult> Post(
         CreateAuctionModel model, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(model);
+
         var auction = await createAuctionCommandHandler.Handle(model.ToCommand(), cancellationToken);
         var auctionModel =
             auctionMapper.MapAuctionToModel(auction);

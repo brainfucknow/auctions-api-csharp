@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.OpenApi;
@@ -14,27 +15,33 @@ namespace Wallymathieu.Auctions.Api.Infrastructure.Swagger;
 internal class SwaggerDefaultValues : IOperationFilter
 {
     /// <inheritdoc />
-    public void Apply( OpenApiOperation operation, OperationFilterContext context )
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
         var apiDescription = context.ApiDescription;
 
         operation.Deprecated |= apiDescription.IsDeprecated();
 
         // REF: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/issues/1752#issue-663991077
-        foreach ( var responseType in context.ApiDescription.SupportedResponseTypes )
+        foreach (var responseType in context.ApiDescription.SupportedResponseTypes)
         {
             // REF: https://github.com/domaindrivendev/Swashbuckle.AspNetCore/blob/b7cf75e7905050305b115dd96640ddd6e74c7ac9/src/Swashbuckle.AspNetCore.SwaggerGen/SwaggerGenerator/SwaggerGenerator.cs#L383-L387
-            var responseKey = responseType.IsDefaultResponse ? "default" : responseType.StatusCode.ToString();
-            var response = operation.Responses[responseKey];
-
-            foreach ( var contentType in response.Content.Keys )
+            var responseKey = responseType.IsDefaultResponse
+                ? "default"
+                : responseType.StatusCode.ToString(CultureInfo.InvariantCulture);
+            if (operation.Responses is null ||
+                !operation.Responses.TryGetValue(responseKey, out var response) ||
+                response.Content is null)
             {
-                if ( !responseType.ApiResponseFormats.Any( x => x.MediaType == contentType ) )
+                continue;
+            }
+
+            foreach (var contentType in response.Content.Keys.ToArray())
+            {
+                if (!responseType.ApiResponseFormats.Any(x => string.Equals(x.MediaType, contentType, StringComparison.Ordinal)))
                 {
-                    response.Content.Remove( contentType );
+                    response.Content.Remove(contentType);
                 }
             }
         }
-
     }
 }

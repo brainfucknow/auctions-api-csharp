@@ -1,0 +1,5 @@
+root = false
+
+[*.cs]
+# Swagger document rendering is kept together so the generated description remains easy to audit.
+dotnet_diagnostic.MA0051.severity = none

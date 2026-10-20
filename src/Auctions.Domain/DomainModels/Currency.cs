@@ -10,7 +10,7 @@ public record Currency(CurrencyCode Code)
 
     public static bool TryParse(string c, out Currency? value)
     {
-        if (Enum.TryParse(c, out CurrencyCode result))
+        if (Enum.TryParse(c, out CurrencyCode result) && Enum.IsDefined(result))
         {
             value = new Currency(result);
             return true;

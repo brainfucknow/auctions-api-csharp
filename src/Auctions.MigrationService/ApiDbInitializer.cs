@@ -1,16 +1,23 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Wallymathieu.Auctions.Frontend.Data;
 using Wallymathieu.Auctions.Infrastructure.Data;
 
 namespace Auctions.MigrationService;
-using System.Diagnostics;
 
-public class ApiDbInitializer(
+internal sealed class ApiDbInitializer(
     IServiceProvider serviceProvider,
     IHostEnvironment hostEnvironment,
     IHostApplicationLifetime hostApplicationLifetime) : BackgroundService
 {
     private readonly ActivitySource _activitySource = new(hostEnvironment.ApplicationName);
+
+    public override void Dispose()
+    {
+        _activitySource.Dispose();
+        base.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -23,7 +30,7 @@ public class ApiDbInitializer(
         hostApplicationLifetime.StopApplication();
     }
 
-    private async Task MigrateDbContext<TDbContext>(Activity? activity,CancellationToken cancellationToken)
+    private async Task MigrateDbContext<TDbContext>(Activity? activity, CancellationToken cancellationToken)
         where TDbContext : DbContext
     {
         try

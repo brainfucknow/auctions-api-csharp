@@ -4,3 +4,8 @@ root = false
 
 # CA1062: Validate arguments of public methods
 dotnet_diagnostic.CA1062.severity = none
+# EF Core migration filenames include their generated timestamp prefix.
+dotnet_diagnostic.MA0048.severity = none
+# Generated migration expressions are preserved verbatim.
+dotnet_diagnostic.CA1825.severity = none
+dotnet_diagnostic.MA0005.severity = none

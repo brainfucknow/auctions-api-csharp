@@ -45,7 +45,7 @@ builder.Services
         if (!string.IsNullOrEmpty(principalHeader)) c.PrincipalHeader = principalHeader;
     });
 //#else
-// TODO: Register JWT based auth
+// Production deployments should register JWT authentication here.
 //#endif
 
 var app = builder.Build();

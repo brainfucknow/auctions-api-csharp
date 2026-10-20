@@ -25,41 +25,41 @@ public class TimedAscendingAuction : Auction, IState
         switch (state)
         {
             case State.OnGoing:
-            {
-                errors = bid.Validate(this);
-
-                if (Bids.Count != 0)
                 {
-                    var maxBid = Bids.Max(b => b.Amount)!;
-                    if (bid.Amount <= maxBid)
+                    errors = bid.Validate(this);
+
+                    if (Bids.Count != 0)
                     {
-                        errors |= Errors.MustPlaceBidOverHighestBid;
-                        return false;
+                        var maxBid = Bids.Max(b => b.Amount)!;
+                        if (bid.Amount <= maxBid)
+                        {
+                            errors |= Errors.MustPlaceBidOverHighestBid;
+                            return false;
+                        }
+
+                        if (bid.Amount < maxBid + Options.MinRaise)
+                        {
+                            errors |= Errors.MustRaiseWithAtLeast;
+                            return false;
+                        }
                     }
 
-                    if (bid.Amount < maxBid + Options.MinRaise)
-                    {
-                        errors |= Errors.MustRaiseWithAtLeast;
-                        return false;
-                    }
+                    if (errors != Errors.None) return false;
+
+                    EndsAt = new[] { EndsAt, Expiry, time + Options.TimeFrame }.Where(v => v != null).Max();
+                    Bids.Add(new BidEntity(0, bid));
+                    return true;
                 }
-
-                if (errors != Errors.None) return false;
-
-                EndsAt = new[] { EndsAt, Expiry, time + Options.TimeFrame }.Where(v => v != null).Max();
-                Bids.Add(new BidEntity(0, bid));
-                return true;
-            }
             case State.HasEnded:
-            {
-                errors = Errors.AuctionHasEnded;
-                return false;
-            }
+                {
+                    errors = Errors.AuctionHasEnded;
+                    return false;
+                }
             case State.AwaitingStart:
-            {
-                errors = Errors.AuctionHasNotStarted;
-                return false;
-            }
+                {
+                    errors = Errors.AuctionHasNotStarted;
+                    return false;
+                }
             default:
                 throw new InvalidDataException(state.ToString());
         }
@@ -81,12 +81,12 @@ public class TimedAscendingAuction : Auction, IState
         switch (GetState(time))
         {
             case State.HasEnded:
-            {
-                var winningBid = Bids.MaxBy(b => b.Amount);
-                return winningBid?.Amount >= Options.ReservePrice
-                    ? (winningBid.Amount, winningBid.User)
-                    : null;
-            }
+                {
+                    var winningBid = Bids.MaxBy(b => b.Amount);
+                    return winningBid?.Amount >= Options.ReservePrice
+                        ? (winningBid.Amount, winningBid.User)
+                        : null;
+                }
             case State.AwaitingStart:
             case State.OnGoing:
             default: return null;

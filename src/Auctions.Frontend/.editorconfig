@@ -1,0 +1,7 @@
+root = false
+
+[*.cs]
+# Razor PageModel code-behind filenames follow the .cshtml.cs convention.
+dotnet_diagnostic.MA0048.severity = none
+# Razor pages and the shared EF context require public discovery/access.
+dotnet_diagnostic.CA1515.severity = none

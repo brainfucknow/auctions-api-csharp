@@ -102,12 +102,3 @@ public sealed class Result<TOk, TError> : IResult
     public bool IsOk => _tag == Tag.Ok;
     public bool IsError => _tag == Tag.Error;
 }
-
-/// <summary>
-///
-/// </summary>
-public interface IResult
-{
-    public bool IsOk { get; }
-    public bool IsError { get; }
-}

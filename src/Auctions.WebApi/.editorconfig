@@ -1,0 +1,5 @@
+root = false
+
+[*.cs]
+# MVC controllers and HTTP contract models are public discovery surfaces.
+dotnet_diagnostic.CA1515.severity = none

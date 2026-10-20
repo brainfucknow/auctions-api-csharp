@@ -6,6 +6,8 @@ namespace Wallymathieu.Auctions.Infrastructure.Data;
 
 public class AuctionDbContext : DbContext
 {
+    private const string SqlServerProvider = "Microsoft.EntityFrameworkCore.SqlServer";
+
     public AuctionDbContext()
     {
     }
@@ -46,6 +48,31 @@ public class AuctionDbContext : DbContext
         return auction;
     }
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        GenerateVersionsForNonSqlServerProviders();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        GenerateVersionsForNonSqlServerProviders();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void GenerateVersionsForNonSqlServerProviders()
+    {
+        if (string.Equals(Database.ProviderName, SqlServerProvider, StringComparison.Ordinal)) return;
+
+        foreach (var entry in ChangeTracker.Entries<Auction>()
+                     .Where(entry => entry.State is EntityState.Added or EntityState.Modified))
+        {
+            entry.Property(auction => auction.Version).CurrentValue = Guid.NewGuid().ToByteArray();
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -59,7 +86,11 @@ public class AuctionDbContext : DbContext
             entity.Property(e => e.Title).HasMaxLength(200);
             WithUserId(entity.Property(o => o.User));
             HasCurrencyCodeConversion(entity.Property(e => e.Currency));
-            entity.Property(p => p.Version).IsConcurrencyToken();
+            var version = entity.Property(p => p.Version);
+            if (string.Equals(Database.ProviderName, SqlServerProvider, StringComparison.Ordinal))
+                version.IsRowVersion();
+            else
+                version.IsConcurrencyToken();
             entity.HasMany("Bids").WithOne()
                 .HasPrincipalKey("AuctionId")
                 .HasForeignKey("AuctionId");

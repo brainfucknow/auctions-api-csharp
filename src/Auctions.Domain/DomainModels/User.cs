@@ -41,7 +41,7 @@ public abstract partial record User(UserId Id)
         return false;
     }
 
-    [GeneratedRegex("(?<type>\\w*)\\|(?<id>[^|]*)(\\|(?<name>.*))?")]
+    [GeneratedRegex("(?<type>\\w*)\\|(?<id>[^|]*)(?:\\|(?<name>.*))?", RegexOptions.ExplicitCapture, 1_000)]
     private static partial Regex UserRegex();
 
     [Serializable]

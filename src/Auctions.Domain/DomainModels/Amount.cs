@@ -16,19 +16,45 @@ public partial record Amount(long Value, CurrencyCode Currency) : IComparable<Am
     public static bool TryParse(string amount, out Amount? value)
     {
         var match = AmountRegex().Match(amount);
-        if (match.Success)
+        if (!match.Success)
         {
-            var currencyString = match.Groups["currency"].Value;
-            var v = match.Groups["value"].Value;
-            if (DomainModels.Currency.TryParse(currencyString, out var currency) && currency != null)
-            {
-                value = new Amount(long.Parse(v, CultureInfo.InvariantCulture), currency);
-                return true;
-            }
+            value = default;
+            return false;
         }
 
-        value = default;
+        if (!TryParseCurrency(match, out var currency))
+        {
+            value = default;
+            return false;
+        }
+
+        if (!TryParseValue(match, out var parsedValue))
+        {
+            value = default;
+            return false;
+        }
+
+        value = new Amount(parsedValue, currency);
+        return true;
+    }
+
+    private static bool TryParseCurrency(Match match, out CurrencyCode currencyCode)
+    {
+        var currencyString = match.Groups["currency"].Value;
+        if (DomainModels.Currency.TryParse(currencyString, out var currency) && currency is not null)
+        {
+            currencyCode = currency;
+            return true;
+        }
+
+        currencyCode = default;
         return false;
+    }
+
+    private static bool TryParseValue(Match match, out long value)
+    {
+        var amountString = match.Groups["value"].Value;
+        return long.TryParse(amountString, CultureInfo.InvariantCulture, out value);
     }
 
     public static Amount operator +(Amount a1, Amount a2) => Add(a1, a2);
@@ -67,7 +93,7 @@ public partial record Amount(long Value, CurrencyCode Currency) : IComparable<Am
         var currency2 = a2.Currency;
         if (!currency.Equals(currency2))
         {
-            throw new ArgumentException("not defined for two different currencies");
+            throw new ArgumentException("not defined for two different currencies", nameof(a2));
         }
     }
 
@@ -112,9 +138,9 @@ public partial record Amount(long Value, CurrencyCode Currency) : IComparable<Am
             return amount!;
         }
 
-        throw new ArgumentException("Could not parse value");
+        throw new ArgumentException("Could not parse value", nameof(s));
     }
 
-    [GeneratedRegex("(?<currency>[A-Z]+)(?<value>[0-9]+)")]
+    [GeneratedRegex("\\A(?<currency>[A-Z]+)(?<value>[0-9]+)\\z", RegexOptions.None, 1_000)]
     private static partial Regex AmountRegex();
 }

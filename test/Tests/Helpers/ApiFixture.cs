@@ -55,9 +55,9 @@ public class ApiFixture(IDatabaseFixture databaseFixture, IApiAuth auth) : IDisp
         _webApplicationFactory.Dispose();
     }
 
-    public async Task<HttpResponseMessage> Post(string url, string auctionRequest, AuthToken authToken)
+    public async Task<HttpResponseMessage> Post(string path, string auctionRequest, AuthToken authToken)
     {
-        return await _testServer!.CreateRequest(url).And(r =>
+        return await _testServer!.CreateRequest(path).And(r =>
         {
             r.Content = Json(auctionRequest);
             AcceptJson(r);
@@ -69,9 +69,9 @@ public class ApiFixture(IDatabaseFixture databaseFixture, IApiAuth auth) : IDisp
     {
         return new StringContent(bidRequest, Encoding.UTF8, "application/json");
     }
-    public async Task<HttpResponseMessage> Get(string url, AuthToken authToken)
+    public async Task<HttpResponseMessage> Get(string path, AuthToken authToken)
     {
-        return await _testServer!.CreateRequest(url).And(r =>
+        return await _testServer!.CreateRequest(path).And(r =>
         {
             AcceptJson(r);
             auth.TryAddAuth(r, authToken);
@@ -92,7 +92,7 @@ public class ApiFixture(IDatabaseFixture databaseFixture, IApiAuth auth) : IDisp
     /// Only intended to reset time back to initial now, so that other tests are not affected by
     /// clock changes.
     /// </summary>
-    private sealed class FakeClockSetter(FakeSystemClock fakeSystemClock):ITimeSetter,IDisposable
+    private sealed class FakeClockSetter(FakeSystemClock fakeSystemClock) : ITimeSetter, IDisposable
     {
         public void Dispose()
         {
@@ -106,7 +106,7 @@ public class ApiFixture(IDatabaseFixture databaseFixture, IApiAuth auth) : IDisp
     }
 }
 
-public interface ITimeSetter:IDisposable
+public interface ITimeSetter : IDisposable
 {
     void SetTime(DateTimeOffset now);
 }

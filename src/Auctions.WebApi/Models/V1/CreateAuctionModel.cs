@@ -69,4 +69,3 @@ public record CreateAuctionModel(
         return true;
     }
 }
-

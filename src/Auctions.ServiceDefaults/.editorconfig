@@ -1,0 +1,5 @@
+root = false
+
+[*.cs]
+# Conventional service-defaults extension type shares a framework namespace.
+dotnet_diagnostic.CA1724.severity = none

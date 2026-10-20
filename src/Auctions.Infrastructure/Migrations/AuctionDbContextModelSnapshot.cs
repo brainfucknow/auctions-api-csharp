@@ -17,7 +17,7 @@ namespace App.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.14")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -57,9 +57,11 @@ namespace App.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<Guid>("Version")
+                    b.Property<byte[]>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("uniqueidentifier");
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.HasKey("AuctionId");
 
@@ -141,6 +143,13 @@ namespace App.Migrations
 
                             b1.Property<TimeSpan>("TimeFrame")
                                 .HasColumnType("time");
+
+                            b1.Property<byte[]>("_TableSharingConcurrencyTokenConvention_Version")
+                                .IsConcurrencyToken()
+                                .IsRequired()
+                                .ValueGeneratedOnAddOrUpdate()
+                                .HasColumnType("rowversion")
+                                .HasColumnName("Version");
 
                             b1.HasKey("TimedAscendingAuctionAuctionId");
 

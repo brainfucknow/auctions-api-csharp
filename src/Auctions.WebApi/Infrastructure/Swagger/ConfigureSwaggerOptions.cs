@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Asp.Versioning.ApiExplorer;
@@ -25,12 +26,12 @@ internal class ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider) 
     public void Configure(SwaggerGenOptions options)
     {
         var webAssembly = typeof(Program).GetTypeInfo().Assembly;
-        var informationalVersion =
-            (webAssembly.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute))
-                as AssemblyInformationalVersionAttribute[])?.First().InformationalVersion;
+        var informationalVersion = webAssembly
+            .GetCustomAttributes<AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion;
 
         var opts = new JsonSerializerOptions().AddAuctionConverters();
-        options.MapType(typeof(Amount), () => new OpenApiSchema
+        options.MapType<Amount>(() => new OpenApiSchema
         {
             Type = JsonSchemaType.String,
             Example = Amount.Zero(CurrencyCode.VAC).ToString()
@@ -54,7 +55,7 @@ internal class ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider) 
         var text = new StringBuilder("Simple implementation of Auction API in C#");
         var info = new OpenApiInfo
         {
-            Version = description.ApiVersion.ToString(),
+            Version = FormattableString.Invariant($"{description.ApiVersion}"),
             Title = "Auction API",
             Contact = new OpenApiContact
             {

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Wallymathieu.Auctions.DomainModels.AuctionTypes;
 
 public abstract record AuctionType
@@ -16,9 +18,9 @@ public abstract record AuctionType
         {
             "English" when
                     parts.Length == 4
-                    && long.TryParse(parts[1], out var minRaise)
-                    && long.TryParse(parts[2], out var reservePrice)
-                    && long.TryParse(parts[3], out var timeFrame)
+                    && long.TryParse(parts[1], CultureInfo.InvariantCulture, out var minRaise)
+                    && long.TryParse(parts[2], CultureInfo.InvariantCulture, out var reservePrice)
+                    && long.TryParse(parts[3], CultureInfo.InvariantCulture, out var timeFrame)
                     =>
                 new EnglishAuctionType(
                     MinRaise: minRaise,
